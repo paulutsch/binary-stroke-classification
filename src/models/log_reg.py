@@ -2,7 +2,7 @@ from numpy import ndarray
 from numpy.typing import ArrayLike
 from sklearn.linear_model import LogisticRegression
 
-from .BaseModel import BaseModel
+from .base_model import BaseModel
 
 
 class LogReg(BaseModel):

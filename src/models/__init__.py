@@ -1,1 +1,1 @@
-from .LogReg import LogReg
+from .log_reg import LogReg

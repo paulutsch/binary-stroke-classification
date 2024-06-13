@@ -1,4 +1,5 @@
-from src.data import DataLoader, DataPreprocessor, FeatureEngineer
+from data import feature_engineer
+from src.data import DataLoader, DataPreprocessor
 from src.models import LogReg
 from src.visualization import DataExplorer, ResultsExplorer
 

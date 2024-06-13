@@ -1,2 +1,2 @@
-from .DataExplorer import DataExplorer
-from .ResultsExplorer import ResultsExplorer
+from .data_explorer import DataExplorer
+from .results_explorer import ResultsExplorer
