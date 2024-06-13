@@ -1,3 +1,3 @@
-class DataExplorer:
+class RandomForest:
     def __init__(self):
         pass
