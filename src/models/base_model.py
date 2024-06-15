@@ -9,7 +9,8 @@ from sklearn.metrics import accuracy_score, f1_score
 
 
 class BaseModel(ABC):
-    def __init__(self):
+    def __init__(self, use_dependencies: bool = False, model_name: str = "BaseModel"):
+        self.use_dependencies = use_dependencies
         self._model = None
 
     @abstractmethod
