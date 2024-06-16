@@ -3,27 +3,17 @@ from loguru import logger
 
 
 class DataPreprocessor:
-    def __init__(self, df_train: pd.DataFrame):
-        self.category_stroke_counts = {}
-        for column in df_train.columns:
-            if not pd.api.types.is_numeric_dtype(df_train[column]):
-                total_counts = df_train.groupby(column)["stroke"].count()
-                stroke_counts = df_train.groupby(column)["stroke"].sum()
-                self.category_stroke_counts[column] = (
-                    stroke_counts / total_counts
-                ).sort_values()
-
-                logger.info(f"Category stroke proportions for {column}:")
-                logger.info(self.category_stroke_counts[column])
+    def __init__(self):
+        pass
 
     def remove_nans(self, df: pd.DataFrame) -> pd.DataFrame:
         n_before = len(df.values)
         logger.info(f"Samples before removing NaN: {n_before}")
-        df.dropna(inplace=True)
+        df_new = df.dropna()
         n_after = len(df.values)
         logger.info(f"Samples after removing NaN: {n_after}")
         logger.success(f"Removed {n_before - n_after} samples with missing values.")
-        return df
+        return df_new
 
     def transform_non_numericals(self, df: pd.DataFrame) -> pd.DataFrame:
         df_encoded = df.copy()
@@ -43,7 +33,6 @@ class DataPreprocessor:
                     df_encoded = pd.get_dummies(df_encoded, columns=[column], dtype=int)
                     logger.info(f"Transformed {column} into one-hot encoding")
 
-        logger.info(df_encoded.iloc[0])
         return df_encoded
 
     def get_processed_data(self):

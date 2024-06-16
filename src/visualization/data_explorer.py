@@ -79,7 +79,18 @@ class DataExplorer:
 
     def plot_correlation_matrix(self, df: pd.DataFrame):
         corr_matrix = df.drop(columns=["id"]).corr(method="pearson")
-        plt.figure(figsize=(12, 10))
+
+        # Adjust figure size based on the number of columns
+        num_columns = len(corr_matrix.columns)
+        fig_width = max(12, num_columns)  # Ensure a minimum width of 12
+        plt.figure(figsize=(fig_width, 10))
+
         sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", fmt=".2f")
+
+        # Set rotation of x and y axis labels
+        plt.xticks(rotation=45, ha="right")
+        plt.yticks(rotation=0)
+
         plt.title("Correlation Matrix")
+        plt.tight_layout()  # Adjusts the padding to make sure everything fits
         plt.show()

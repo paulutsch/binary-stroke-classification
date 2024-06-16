@@ -59,10 +59,17 @@ if visualize_data:
     data_explorer.print_non_numericals(data_train_raw)
 
 # preprocess data
-data_preprocessor = DataPreprocessor(data_train_raw)
+data_preprocessor = DataPreprocessor()
 data_train_preprocessed = data_preprocessor.transform_non_numericals(data_train_raw)
 X_test_preprocessed = data_preprocessor.transform_non_numericals(X_test_raw)
 # data_train_preprocessed = data_preprocessor.remove_nans(data_train_raw)
+
+# feature engineering
+feature_engineer = FeatureEngineer(data_train_preprocessed)
+data_train_preprocessed = feature_engineer.combine_correlating_features(
+    data_train_preprocessed
+)
+X_test_preprocessed = feature_engineer.apply_transformations(X_test_preprocessed)
 
 if visualize_data:
     data_explorer.plot_correlation_matrix(data_train_preprocessed)
