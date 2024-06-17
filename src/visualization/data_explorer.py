@@ -53,11 +53,12 @@ class DataExplorer:
         plt.show()
 
     def plot_nans(self, df: pd.DataFrame):
+        n = len(df)
         nan_counts = []
         for col in df.columns:
             n_nan_in_col = df[col].isnull().sum() + sum(df[col] == "Unknown")
             nan_counts.append((col, n_nan_in_col))
-            logger.info(f"Number of NaN values in column {col}: {n_nan_in_col}")
+            logger.info(f"Number of NaN values in column {col}: {n_nan_in_col} / {n}")
 
         nan_df = pd.DataFrame(nan_counts, columns=["Column", "NaN Count"])
 
@@ -78,7 +79,7 @@ class DataExplorer:
                 logger.info(f"unique values in {column}: {unique_values}")
 
     def plot_correlation_matrix(self, df: pd.DataFrame):
-        corr_matrix = df.drop(columns=["id"]).corr(method="pearson")
+        corr_matrix = df.corr(method="pearson")
 
         # Adjust figure size based on the number of columns
         num_columns = len(corr_matrix.columns)

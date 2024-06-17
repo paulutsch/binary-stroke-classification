@@ -20,7 +20,7 @@ class DataPreprocessor:
         for column in df.columns:
             if not pd.api.types.is_numeric_dtype(df[column]):
                 # if column == "smoking_status":
-                #     val_to_int = {"never smoked": 0, "formerly smoked": 1, "smokes": 2}
+                #     val_to_int = {"never smoked": 0, "formerly smoked": 2, "smokes": 1}
                 #     df_encoded[column] = df[column].map(val_to_int)
                 # else:
                 unique_values = df[column].unique()

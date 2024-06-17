@@ -7,10 +7,12 @@ from .base_model import BaseModel
 
 class LogReg(BaseModel):
     def __init__(self, use_dependencies: bool = False):
-        super(LogReg, self).__init__(use_dependencies, model_name="LogReg")
-
+        self.use_dependencies = use_dependencies
         if self.use_dependencies:
-            self._model = LogisticRegression()
+            self._model = LogisticRegression(
+                class_weight="balanced",  # account for strong imbalance in data
+                solver="liblinear",
+            )
         else:
             self._model = None
 
@@ -28,6 +30,6 @@ class LogReg(BaseModel):
 
     def predict_proba(self, X: ArrayLike) -> ndarray:
         if self.use_dependencies:
-            return self._model.predict_proba(X)
+            return self._model.predict_proba(X)[:, 1]
         else:
             pass
