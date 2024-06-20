@@ -16,7 +16,7 @@ class NeuralNetwork(torch.nn.Module):
 
         self.l1 = torch.nn.Linear(in_features=n_features, out_features=n_hidden)
         self.l2 = torch.nn.Linear(in_features=n_hidden, out_features=1)
-        self.optimizer = torch.optim.SGD(self.parameters(), lr=0.02, weight_decay=0.01)
+        self.optimizer = torch.optim.SGD(self.parameters(), lr=0.1, weight_decay=0.01)
 
     def forward(self, x):
         a1 = torch.sigmoid(self.l1(x))
@@ -24,7 +24,7 @@ class NeuralNetwork(torch.nn.Module):
         return y_pred
 
     def fit(self, train_dataset: StrokeDataset, val_dataset: StrokeDataset):
-        epochs = 300
+        epochs = 25
 
         class_weights = compute_class_weight(
             class_weight="balanced", classes=np.array([0, 1]), y=train_dataset.y
