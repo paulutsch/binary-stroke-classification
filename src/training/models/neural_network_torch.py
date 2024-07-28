@@ -11,7 +11,13 @@ from src.data_preparation import StrokeDataset
 
 class NeuralNetwork(torch.nn.Module):
     def __init__(
-        self, n_features, n_hidden: int = 24, epochs=50, lr=0.05, batch_size=32
+        self,
+        n_features,
+        n_hidden: int = 16,
+        epochs=10,
+        lr=0.05,
+        batch_size=32,
+        lambda_reg=0.01,
     ):
         super().__init__()
         self.epochs = epochs
@@ -22,7 +28,7 @@ class NeuralNetwork(torch.nn.Module):
         self.l2 = torch.nn.Linear(in_features=n_hidden, out_features=1)
 
         self.optimizer = torch.optim.SGD(
-            self.parameters(), lr=self.lr, weight_decay=0.005
+            self.parameters(), lr=self.lr, weight_decay=lambda_reg
         )
 
     def forward(self, x):

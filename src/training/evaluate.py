@@ -45,8 +45,8 @@ def scores(
     return acc, f1, auc
 
 
-def evaluate(model, X, y, k=10, seed=None):
-    kf = KFold(n_splits=k, shuffle=True, random_state=seed)
+def evaluate(model, X, y, k=10):
+    kf = KFold(n_splits=k, shuffle=True)
 
     scores = []
 
