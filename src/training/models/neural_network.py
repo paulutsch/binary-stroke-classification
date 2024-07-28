@@ -3,6 +3,7 @@ from typing import Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
+from sklearn.utils.class_weight import compute_class_weight
 
 from ..utils import weighted_binary_cross_entropy_loss
 from .utils import (
@@ -22,9 +23,12 @@ class BinaryNeuralNetwork(object):
         d_hidden: int,
         n_hidden: int,
         epochs: int = 10,
-        learning_rate: int = 0.05,
+        learning_rate: float = 0.05,
         batch_size: int = 32,
         lambda_reg: float = 0.01,
+        beta1: float = 0.9,
+        beta2: float = 0.999,
+        epsilon: float = 1e-8,
     ):
         """
         X: n_input x d_input
@@ -46,11 +50,19 @@ class BinaryNeuralNetwork(object):
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.lambda_reg = lambda_reg
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.epsilon = epsilon
 
         self.class_weights = np.zeros(2)
 
         self.W = []
         self.B = []
+
+        self.m_W = []
+        self.v_W = []
+        self.m_B = []
+        self.v_B = []
 
         self.initialize_params()
 
@@ -74,6 +86,11 @@ class BinaryNeuralNetwork(object):
             print(f"Shape of self.W[{i+1}]:", self.W[i].shape)
             self.B.append(b)
             print(f"Shape of self.B[{i+1}]:", self.B[i].shape)
+
+            self.m_W.append(np.zeros_like(w))
+            self.v_W.append(np.zeros_like(w))
+            self.m_B.append(np.zeros_like(b))
+            self.v_B.append(np.zeros_like(b))
 
     def forward(self, X: npt.ArrayLike, return_intermediates=False) -> npt.ArrayLike:
         """
@@ -142,6 +159,7 @@ class BinaryNeuralNetwork(object):
 
         # derivative of the loss with respect to the pre-activation of the output layer
         d_L_d_z = derivative_weighted_bce(Y_hat, Y, self.class_weights)
+        print("Shape of d_L_d_z:", d_L_d_z.shape)
 
         # derivatives of the loss with respect to the weights and biases of the last layer
         d_L_d_W[-1] = np.dot(H[-2].T, d_L_d_z) / batch_size
@@ -173,10 +191,16 @@ class BinaryNeuralNetwork(object):
         Fit the neural network to the training data.
         """
         n = X.shape[0]
-        self.class_weights = compute_class_weights(Y)
+        self.class_weights = compute_class_weight(
+            class_weight="balanced", classes=np.array([0, 1]), y=Y
+        )
 
         losses_train = []
         losses_val = []
+
+        # Adam optimizer hyperparameters
+        t = 0
+
         for epoch in range(self.epochs):
             epoch_loss_train = 0.0
             for i in range(0, n, self.batch_size):
@@ -186,9 +210,40 @@ class BinaryNeuralNetwork(object):
                 Y_hat, A, Z = self.forward(X_batch, return_intermediates=True)
                 d_L_d_W, d_L_d_B = self._backward(Y_batch, Y_hat, A, Z)
 
+                t += 1  # Increment time step
+
                 for j in range(self.n_hidden + 1):
-                    self.W[j] -= self.learning_rate * d_L_d_W[j]
-                    self.B[j] -= self.learning_rate * d_L_d_B[j]
+                    # Update biased first moment estimate
+                    self.m_W[j] = (
+                        self.beta1 * self.m_W[j] + (1 - self.beta1) * d_L_d_W[j]
+                    )
+                    self.m_B[j] = (
+                        self.beta1 * self.m_B[j] + (1 - self.beta1) * d_L_d_B[j]
+                    )
+
+                    # Update biased second raw moment estimate
+                    self.v_W[j] = self.beta2 * self.v_W[j] + (1 - self.beta2) * (
+                        d_L_d_W[j] ** 2
+                    )
+                    self.v_B[j] = self.beta2 * self.v_B[j] + (1 - self.beta2) * (
+                        d_L_d_B[j] ** 2
+                    )
+
+                    # Compute bias-corrected first moment estimate
+                    m_W_hat = self.m_W[j] / (1 - self.beta1**t)
+                    m_B_hat = self.m_B[j] / (1 - self.beta1**t)
+
+                    # Compute bias-corrected second raw moment estimate
+                    v_W_hat = self.v_W[j] / (1 - self.beta2**t)
+                    v_B_hat = self.v_B[j] / (1 - self.beta2**t)
+
+                    # Update parameters
+                    self.W[j] -= (
+                        self.learning_rate * m_W_hat / (np.sqrt(v_W_hat) + self.epsilon)
+                    )
+                    self.B[j] -= (
+                        self.learning_rate * m_B_hat / (np.sqrt(v_B_hat) + self.epsilon)
+                    )
 
                 batch_loss = weighted_binary_cross_entropy_loss(
                     Y_hat, Y_batch, self.class_weights

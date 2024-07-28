@@ -146,29 +146,7 @@ def print_non_numericals(df: pd.DataFrame):
             logger.info(f"unique values in {column}: {unique_values}")
 
 
-# def plot_correlation_matrix(df: pd.DataFrame):
-#     corr_matrix = df.corr(
-#         method="spearman"
-#     )  # spearman correlation for non-linear relationships
-
-#     # Adjust figure size based on the number of columns
-#     num_columns = len(corr_matrix.columns)
-#     fig_width = max(12, num_columns)  # Ensure a minimum width of 12
-#     plt.figure(figsize=(fig_width, 10))
-
-#     sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", fmt=".2f")
-
-#     # Set rotation of x and y axis labels
-#     plt.xticks(rotation=45, ha="right")
-#     plt.yticks(rotation=0)
-
-#     plt.title("Correlation Matrix")
-#     plt.tight_layout()  # Adjusts the padding to make sure everything fits
-#     plt.show()
-
-
 def pca(df: pd.DataFrame, n_components: int = 2) -> pd.DataFrame:
-    # Fit PCA on the data
     pca = PCA(n_components=n_components)
     principal_components = pca.fit_transform(df)
     principal_df = pd.DataFrame(
@@ -179,22 +157,26 @@ def pca(df: pd.DataFrame, n_components: int = 2) -> pd.DataFrame:
     return principal_df
 
 
-def plot_scatter_and_pair(df: pd.DataFrame):
-    target_column = df["stroke"]
-    numeric_columns = df.select_dtypes(include=["float64", "int64"]).columns
+def plot_scatter_and_pair(X: list, Y: list, feature_names: list, target_name: str):
+    X_df = pd.DataFrame(X, columns=feature_names)
+    Y_series = pd.Series(Y, name=target_name)
+
+    numeric_columns = X_df.select_dtypes(include=["float64", "int64"]).columns
 
     fig, axes = plt.subplots(nrows=5, ncols=5, figsize=(18, 12))
     axes = axes.flatten()
     for i, col in enumerate(numeric_columns):
-        sns.scatterplot(x=df[col], y=target_column, ax=axes[i])
-        axes[i].set_title(f"{col} vs 'stroke'")
+        sns.scatterplot(x=X_df[col], y=Y_series, ax=axes[i])
+        axes[i].set_title(f"{col} vs '{target_name}'")
         axes[i].set_xlabel(col)
-        axes[i].set_ylabel("stroke")
+        axes[i].set_ylabel(target_name)
 
     plt.tight_layout()
     plt.show()
 
     if len(numeric_columns) > 1:
-        sns.pairplot(df, hue="stroke", vars=numeric_columns.drop("stroke"))
+        combined_df = X_df.copy()
+        combined_df[target_name] = Y_series
+        sns.pairplot(combined_df, hue=target_name, vars=numeric_columns)
         plt.suptitle("Pair Plot", y=1.02)
         plt.show()

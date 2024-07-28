@@ -1,8 +1,7 @@
 import numpy as np
+import numpy.typing as npt
 from numpy import ndarray
 from numpy.typing import ArrayLike
-
-from src.data_preparation import StrokeDataset
 
 
 class NaiveBaseline:
@@ -13,13 +12,15 @@ class NaiveBaseline:
 
     def fit(
         self,
-        train_dataset: StrokeDataset,
-        val_dataset: StrokeDataset,
+        X_train: npt.ArrayLike,
+        y_train: npt.ArrayLike,
+        X_val: npt.ArrayLike,
+        y_val: npt.ArrayLike,
     ):
-        self.p_true = train_dataset.y.mean()
+        self.p_true = y_train.mean()
 
-        val_preds = self.predict(val_dataset.X)
-        val_accuracy = (val_preds == val_dataset.y).mean()
+        val_preds = self.predict(X_val)
+        val_accuracy = (val_preds == y_val).mean()
         print(f"Validation accuracy: {val_accuracy}")
 
     def predict(self, X: ArrayLike) -> ndarray:
