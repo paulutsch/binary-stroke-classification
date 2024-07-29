@@ -1,4 +1,5 @@
 import copy
+from itertools import product
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,11 +32,6 @@ def k_fold_cross_validation(initialized_model, X, y, k=5):
     model_final.fit(X, y, X, y)
 
     return model_final, R_est
-
-
-def train_and_evaluate(model, X, y, k=5):
-    model, R_est = k_fold_cross_validation(model, X, y, k)
-    return model, R_est
 
 
 def feature_selection(
