@@ -36,9 +36,7 @@ def relu_prime(z: npt.ArrayLike) -> npt.ArrayLike:
     return np.where(z > 0, 1, 0)  # return z_i for z_i > 0, else 0
 
 
-def derivative_weighted_bce(
-    Y_hat, Y, class_weights=None, epsilon=0.001
-) -> npt.ArrayLike:
+def delta_weighted_bce(Y_hat, Y, class_weights=None, epsilon=0.001) -> npt.ArrayLike:
     """
     Compute the derivative of the weighted binary cross entropy loss.
 

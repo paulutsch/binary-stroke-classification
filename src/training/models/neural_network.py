@@ -8,7 +8,7 @@ from sklearn.utils.class_weight import compute_class_weight
 from ..utils import weighted_binary_cross_entropy_loss
 from .utils import (
     compute_class_weights,
-    derivative_weighted_bce,
+    delta_weighted_bce,
     relu,
     relu_prime,
     sigmoid,
@@ -26,9 +26,6 @@ class BinaryNeuralNetwork(object):
         learning_rate: float = 0.05,
         batch_size: int = 32,
         lambda_reg: float = 0.01,
-        beta1: float = 0.9,
-        beta2: float = 0.999,
-        epsilon: float = 1e-8,
     ):
         """
         X: n_input x d_input
@@ -50,19 +47,11 @@ class BinaryNeuralNetwork(object):
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.lambda_reg = lambda_reg
-        self.beta1 = beta1
-        self.beta2 = beta2
-        self.epsilon = epsilon
 
         self.class_weights = np.zeros(2)
 
         self.W = []
         self.B = []
-
-        self.m_W = []
-        self.v_W = []
-        self.m_B = []
-        self.v_B = []
 
         self.initialize_params()
 
@@ -87,38 +76,35 @@ class BinaryNeuralNetwork(object):
             self.B.append(b)
             print(f"Shape of self.B[{i+1}]:", self.B[i].shape)
 
-            self.m_W.append(np.zeros_like(w))
-            self.v_W.append(np.zeros_like(w))
-            self.m_B.append(np.zeros_like(b))
-            self.v_B.append(np.zeros_like(b))
-
     def forward(self, X: npt.ArrayLike, return_intermediates=False) -> npt.ArrayLike:
         """
         Compute forward pass of the neural network.
 
         Y_hat: n_samples
         """
-        H = [X]
+        A = [X]
         Z = []
 
         # forward propagation
-        h_i = X
+        a_i = X
         for i in range(self.n_hidden + 1):
-            z_i = np.dot(h_i, self.W[i]) + self.B[i]
+            z_i = np.dot(a_i, self.W[i]) + self.B[i]  # add bias row-wise
 
             if i < self.n_hidden:
-                h_i = relu(z_i)
+                a_i = relu(z_i)
             else:  # output layer
-                z_i = z_i.squeeze()
-                h_i = sigmoid(z_i)
+                z_i = z_i.squeeze()  # transform (n_samples, 1) to (n_samples,)
+                a_i = sigmoid(z_i)  # (n_samples,)
 
             Z.append(z_i)
-            H.append(h_i)
+            A.append(a_i)
 
-        Y_hat = H[-1].squeeze()
+        print("Shape of A[-1]:", A[-1].shape)
+        Y_hat = A[-1].squeeze()
+        print("Shape of Y_hat:", Y_hat.shape)
 
         if return_intermediates:
-            return Y_hat, H, Z
+            return Y_hat, A, Z
 
         return Y_hat
 
@@ -146,7 +132,7 @@ class BinaryNeuralNetwork(object):
         self,
         Y: npt.ArrayLike,
         Y_hat: npt.ArrayLike,
-        H: npt.ArrayLike,
+        A: npt.ArrayLike,
         Z: npt.ArrayLike,
     ) -> Tuple[npt.ArrayLike, npt.ArrayLike]:
         """
@@ -158,24 +144,31 @@ class BinaryNeuralNetwork(object):
         d_L_d_B = [np.zeros_like(b) for b in self.B]
 
         # derivative of the loss with respect to the pre-activation of the output layer
-        d_L_d_z = derivative_weighted_bce(Y_hat, Y, self.class_weights)
-        print("Shape of d_L_d_z:", d_L_d_z.shape)
+        delta_y = delta_weighted_bce(Y_hat, Y, self.class_weights) * sigmoid_prime(
+            Z[-1]
+        )  # multiply with the derivative of the activation function here, because dL/dy * dy/dz = dL/dz
+        delta_y = delta_y.reshape(-1, 1)  # reshape from (n_samples,) to (n_samples, 1)
 
         # derivatives of the loss with respect to the weights and biases of the last layer
-        d_L_d_W[-1] = np.dot(H[-2].T, d_L_d_z) / batch_size
-        d_L_d_W[-1] = d_L_d_W[-1].reshape(-1, 1)
-        d_L_d_B[-1] = np.sum(d_L_d_z, axis=0) / batch_size
+        d_L_d_W[-1] = np.dot(A[-2].T, delta_y) / batch_size
+        d_L_d_B[-1] = np.sum(delta_y, axis=0) / batch_size
+
+        delta_l = delta_y
+        print("Shape of delta_l:", delta_l.shape)
 
         # back propagation using chain rule
-        for i in range(self.n_hidden - 1, -1, -1):
-            d_L_d_z = np.dot(
-                d_L_d_z.reshape(batch_size, -1), self.W[i + 1].T
-            ) * relu_prime(Z[i])
-            d_L_d_W[i] = np.dot(H[i].T, d_L_d_z) / batch_size
-            d_L_d_B[i] = np.sum(d_L_d_z, axis=0) / batch_size
+        for l in range(self.n_hidden - 1, -1, -1):
+            delta_l = np.dot(delta_l, self.W[l + 1].T) * relu_prime(
+                Z[l]
+            )  # d^l = (d^{l+1})^T * W^{l+1} x (dA^{l} / dz^{l})
+
+            d_L_d_W[l] = (
+                np.dot(A[l].T, delta_l) / batch_size
+            )  # note: A[l] is actually correct here – A[0] is X!
+            d_L_d_B[l] = np.sum(delta_l, axis=0) / batch_size
 
             # add L2 regularization derivative
-            d_L_d_W[i] += self.lambda_reg * self.W[i]
+            d_L_d_W[l] += self.lambda_reg * self.W[l]
 
         return d_L_d_W, d_L_d_B
 
@@ -198,9 +191,6 @@ class BinaryNeuralNetwork(object):
         losses_train = []
         losses_val = []
 
-        # Adam optimizer hyperparameters
-        t = 0
-
         for epoch in range(self.epochs):
             epoch_loss_train = 0.0
             for i in range(0, n, self.batch_size):
@@ -210,40 +200,9 @@ class BinaryNeuralNetwork(object):
                 Y_hat, A, Z = self.forward(X_batch, return_intermediates=True)
                 d_L_d_W, d_L_d_B = self._backward(Y_batch, Y_hat, A, Z)
 
-                t += 1  # Increment time step
-
                 for j in range(self.n_hidden + 1):
-                    # Update biased first moment estimate
-                    self.m_W[j] = (
-                        self.beta1 * self.m_W[j] + (1 - self.beta1) * d_L_d_W[j]
-                    )
-                    self.m_B[j] = (
-                        self.beta1 * self.m_B[j] + (1 - self.beta1) * d_L_d_B[j]
-                    )
-
-                    # Update biased second raw moment estimate
-                    self.v_W[j] = self.beta2 * self.v_W[j] + (1 - self.beta2) * (
-                        d_L_d_W[j] ** 2
-                    )
-                    self.v_B[j] = self.beta2 * self.v_B[j] + (1 - self.beta2) * (
-                        d_L_d_B[j] ** 2
-                    )
-
-                    # Compute bias-corrected first moment estimate
-                    m_W_hat = self.m_W[j] / (1 - self.beta1**t)
-                    m_B_hat = self.m_B[j] / (1 - self.beta1**t)
-
-                    # Compute bias-corrected second raw moment estimate
-                    v_W_hat = self.v_W[j] / (1 - self.beta2**t)
-                    v_B_hat = self.v_B[j] / (1 - self.beta2**t)
-
-                    # Update parameters
-                    self.W[j] -= (
-                        self.learning_rate * m_W_hat / (np.sqrt(v_W_hat) + self.epsilon)
-                    )
-                    self.B[j] -= (
-                        self.learning_rate * m_B_hat / (np.sqrt(v_B_hat) + self.epsilon)
-                    )
+                    self.W[j] -= self.learning_rate * d_L_d_W[j]
+                    self.B[j] -= self.learning_rate * d_L_d_B[j]
 
                 batch_loss = weighted_binary_cross_entropy_loss(
                     Y_hat, Y_batch, self.class_weights

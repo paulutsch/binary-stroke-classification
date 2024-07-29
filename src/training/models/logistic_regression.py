@@ -6,7 +6,7 @@ import numpy.typing as npt
 from sklearn.utils.class_weight import compute_class_weight
 
 from ..utils import weighted_binary_cross_entropy_loss
-from .utils import compute_class_weights, derivative_weighted_bce, sigmoid
+from .utils import compute_class_weights, delta_weighted_bce, sigmoid
 
 
 class BinaryLogisticRegression(object):
@@ -78,10 +78,12 @@ class BinaryLogisticRegression(object):
         """
         batch_size = X.shape[0]
 
-        d_L_d_z = derivative_weighted_bce(Y_hat, Y, self.class_weights)
+        delta_y = delta_weighted_bce(
+            Y_hat, Y, self.class_weights
+        )  # equivalent to Y_hat - Y in non-weighted binary cross-entropy
 
-        d_L_d_W = np.dot(X.T, d_L_d_z) / batch_size
-        d_L_d_B = np.sum(d_L_d_z, axis=0) / batch_size
+        d_L_d_W = np.dot(X.T, delta_y) / batch_size
+        d_L_d_B = np.sum(delta_y, axis=0) / batch_size
 
         # add L2 regularization derivative
         d_L_d_W += self.lambda_reg * self.W
