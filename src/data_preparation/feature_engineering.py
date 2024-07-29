@@ -1,9 +1,9 @@
 from itertools import combinations_with_replacement
 from typing import List, Tuple
 
-import numpy as np
 import pandas as pd
 from loguru import logger
+from sklearn.decomposition import PCA
 
 
 def create_polynomials(
@@ -36,3 +36,14 @@ def transform_polynomials(
     new_df = pd.concat([df, pd.DataFrame(new_columns)], axis=1)
 
     return new_df
+
+
+def pca(df: pd.DataFrame, n_components: int = 2) -> pd.DataFrame:
+    pca = PCA(n_components=n_components)
+    principal_components = pca.fit_transform(df)
+    principal_df = pd.DataFrame(
+        data=principal_components,
+        columns=[f"PC{i}" for i in range(1, n_components + 1)],
+    )
+
+    return principal_df

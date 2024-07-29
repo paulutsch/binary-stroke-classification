@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from loguru import logger
-from sklearn.decomposition import PCA
 
 
 def plot_distributions(df: pd.DataFrame):
@@ -144,17 +143,6 @@ def print_non_numericals(df: pd.DataFrame):
         if not pd.api.types.is_numeric_dtype(df[column]):
             unique_values = df[column].unique()
             logger.info(f"unique values in {column}: {unique_values}")
-
-
-def pca(df: pd.DataFrame, n_components: int = 2) -> pd.DataFrame:
-    pca = PCA(n_components=n_components)
-    principal_components = pca.fit_transform(df)
-    principal_df = pd.DataFrame(
-        data=principal_components,
-        columns=[f"PC{i}" for i in range(1, n_components + 1)],
-    )
-
-    return principal_df
 
 
 def plot_scatter_and_pair(X: list, Y: list, feature_names: list, target_name: str):

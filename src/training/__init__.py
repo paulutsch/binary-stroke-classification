@@ -7,5 +7,5 @@ from .models import (
     NeuralNetwork,
     RandomForest,
 )
-from .train import k_fold_cross_validation
+from .train import feature_selection, k_fold_cross_validation
 from .utils import weighted_binary_cross_entropy_loss
