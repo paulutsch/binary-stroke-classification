@@ -108,3 +108,37 @@ def feature_selection(
         plt.show()
 
     return features_to_delete, risk_estimates
+
+
+def grid_search_cross_validation(X, y, model, param_grid, cv):
+    best_score = -np.inf
+    best_params = None
+    best_model = None
+
+    # this creates a list of one dict per parameter combination
+    param_combinations = [
+        dict(zip(param_grid.keys(), values)) for values in product(*param_grid.values())
+    ]
+
+    for params in param_combinations:
+        model.set_params(**params)
+
+        cv_scores = []
+        for train_idx, val_idx in cv.split(X):
+            X_train, X_val = X[train_idx], X[val_idx]
+            y_train, y_val = y[train_idx], y[val_idx]
+
+            model_clone = copy.deepcopy(model)
+            model_clone.fit(X_train, y_train)
+            score = model_clone.score(X_val, y_val)
+            cv_scores.append(score)
+
+        mean_cv_score = np.mean(cv_scores)
+
+        if mean_cv_score > best_score:
+            best_score = mean_cv_score
+            best_params = params
+            best_model = copy.deepcopy(model).set_params(**params)
+            best_model.fit(X, y)  # Refit on the entire dataset
+
+    return best_model, best_params, best_score
