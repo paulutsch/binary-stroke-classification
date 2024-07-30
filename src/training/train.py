@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.model_selection import KFold
 
+from .evaluate import evaluate
 from .models import BinaryLogisticRegression, weighted_binary_cross_entropy_loss
 
 
@@ -131,7 +132,7 @@ def select_model(X, y, Model, param_grid, k=5):
                 model, X_train_outer, y_train_outer, k=k - 1, fit_final_model=False
             )
             print(
-                f"Estimated error for fold {i+1} / {k}, parameter set {j+1} / {n_combinations}: {R_ests[i, j]}"
+                f"Empirical risk estimate for fold {i+1} / {k}, parameter set {j+1} / {n_combinations}: {R_ests[i, j]}"
             )
 
     R_ests_params = np.mean(R_ests, axis=0)
@@ -142,12 +143,15 @@ def select_model(X, y, Model, param_grid, k=5):
     model_est = Model(**params)
     model_est.fit(X_train_outer, y_train_outer, X_val_outer, y_val_outer)
 
-    y_hat_outer = model_est.forward(X_val_outer)
-    R_est = weighted_binary_cross_entropy_loss(y_hat_outer, y_val_outer)
-    print(f"Estimated error on outer validation set: {R_est}")
+    y_hat_outer_proba = model_est.forward(X_val_outer)
+    y_hat_outer = model_est.predict(X_val_outer)
+    R_est, acc, f1, auc = evaluate(
+        Model.name, y_val_outer, y_hat_outer, y_hat_outer_proba, plot=True
+    )
+    print(f"Empirical risk estimate on outer validation set: {R_est}")
 
     model_final = Model(**params)
     model_final.fit(X, y, X, y, plot=True)
     print("Fitted final model on entire dataset")
 
-    return model_final, model_est, params, R_est
+    return model_final, params, R_est, acc, f1, auc

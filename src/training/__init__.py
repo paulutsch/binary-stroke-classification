@@ -1,4 +1,4 @@
-from .evaluate import scores
+from .evaluate import evaluate
 from .models import (
     BinaryLogisticRegression,
     BinaryNeuralNetwork,

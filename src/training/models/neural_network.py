@@ -17,6 +17,8 @@ from .utils import (
 
 
 class BinaryNeuralNetwork(object):
+    name = "Binary Neural Network"
+
     def __init__(
         self,
         n_features: int,

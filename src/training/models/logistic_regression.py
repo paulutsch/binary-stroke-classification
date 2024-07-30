@@ -10,6 +10,8 @@ from .utils import compute_class_weights, delta_weighted_bce, sigmoid, sigmoid_p
 
 
 class BinaryLogisticRegression(object):
+    name = "Binary Logistic Regression"
+
     def __init__(
         self,
         n_features: int,

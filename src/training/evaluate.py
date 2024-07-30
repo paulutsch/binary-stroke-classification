@@ -20,14 +20,17 @@ from sklearn.model_selection import KFold
 
 from src.data_preparation import StrokeDataset
 
+from .models import weighted_binary_cross_entropy_loss
 
-def scores(
+
+def evaluate(
     model_name: str,
     y_true: np.ndarray,
     y_pred: np.ndarray,
     y_pred_proba: np.ndarray,
     plot=False,
 ) -> Tuple[float, float, float]:
+    R_est = weighted_binary_cross_entropy_loss(y_pred_proba, y_true)
     acc = accuracy_score(y_true, y_pred)
     prec = precision_score(y_true, y_pred)
     rec = recall_score(y_true, y_pred)
@@ -41,7 +44,7 @@ def scores(
 
     if plot:
         logger.info(
-            f"{model_name} – Accuracy: {acc}\nF1 score: {f1}\nPrecision: {prec}\nRecall: {rec}\nAUC: {auc}\n{cm_df}"
+            f"{model_name} – Empirical Risk Estimate: {R_est}, Accuracy: {acc}, F1 score: {f1}, Precision: {prec}, Recall: {rec}, AUC: {auc}\n{cm_df}"
         )
 
         # Plot ROC curve
@@ -59,35 +62,4 @@ def scores(
         plt.legend(loc="lower right")
         plt.show()
 
-    return acc, f1, auc
-
-
-def evaluate(model, X, y, k=10):
-    kf = KFold(n_splits=k, shuffle=True)
-
-    scores = []
-
-    for train_idx, val_idx in kf.split(X):
-        X_train_fold, X_val_fold = X[train_idx], X[val_idx]
-        y_train_fold, y_val_fold = y[train_idx], y[val_idx]
-
-        dataset_train_fold = StrokeDataset(X_train_fold, y_train_fold)
-        dataset_val_fold = StrokeDataset(X_val_fold, y_val_fold)
-
-        model.fit(
-            dataset_train_fold,
-            dataset_val_fold,
-            plot=False,
-        )
-        y_pred_fold = model.predict(X_val_fold)
-        y_pred_fold_proba = model.predict_proba(X_val_fold)
-        acc, f1, auc = evaluate(
-            "Logistic Regression",
-            y_val_fold,
-            y_pred_fold,
-            y_pred_fold_proba,
-            plot=False,
-        )
-        scores.append(auc)
-    avg_score = np.mean(scores)
-    return avg_score, std_dev
+    return R_est, acc, f1, auc
