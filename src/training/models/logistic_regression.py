@@ -16,7 +16,7 @@ class BinaryLogisticRegression(object):
         epochs: int = 20,
         learning_rate: float = 0.1,
         batch_size: int = 8,
-        lambda_reg: float = 0.01,
+        lambda_reg: float = 0.001,
     ):
         """
         X: (n_samples, n_features)

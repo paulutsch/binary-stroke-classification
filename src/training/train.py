@@ -114,6 +114,7 @@ def select_model(X, y, Model, param_grid, k=5):
     param_combinations = [
         dict(zip(param_grid.keys(), values)) for values in product(*param_grid.values())
     ]
+    n_combinations = len(param_combinations)
 
     R_ests = np.zeros((k, len(param_combinations)))
 
@@ -129,17 +130,24 @@ def select_model(X, y, Model, param_grid, k=5):
             R_ests[i, j] = k_fold_cross_validation(
                 model, X_train_outer, y_train_outer, k=k - 1, fit_final_model=False
             )
+            print(
+                f"Estimated error for fold {i+1} / {k}, parameter set {j+1} / {n_combinations}: {R_ests[i, j]}"
+            )
 
     R_ests_params = np.mean(R_ests, axis=0)
+
     params = param_combinations[np.argmin(R_ests_params)]
+    print(f"Selected best parameters: {params}")
 
     model_est = Model(**params)
     model_est.fit(X_train_outer, y_train_outer, X_val_outer, y_val_outer)
 
     y_hat_outer = model_est.forward(X_val_outer)
     R_est = weighted_binary_cross_entropy_loss(y_hat_outer, y_val_outer)
+    print(f"Estimated error on outer validation set: {R_est}")
 
     model_final = Model(**params)
-    model_final.fit(X, y, X, y)
+    model_final.fit(X, y, X, y, plot=True)
+    print("Fitted final model on entire dataset")
 
-    return model, params, R_est
+    return model_final, model_est, params, R_est

@@ -19,9 +19,9 @@ from .utils import (
 class BinaryNeuralNetwork(object):
     def __init__(
         self,
-        d_input: int,
-        d_hidden: int,
-        n_hidden: int,
+        n_features: int,
+        n_hidden_units: int,
+        n_hidden_layers: int,
         epochs: int = 10,
         learning_rate: float = 0.05,
         batch_size: int = 32,
@@ -31,18 +31,18 @@ class BinaryNeuralNetwork(object):
         X: n_input x d_input
         Y: n_input
 
-        self.W[0]: d_input x d_hidden
-        self.B[0]: d_hidden
+        self.W[0]: n_features x n_hidden_units
+        self.B[0]: n_hidden_units
 
-        self.W[i: 0 < i < (n_hidden-1)]: d_hidden x d_hidden
-        self.B[i: 0 < i < (n_hidden-1)]: d_hidden
+        self.W[i: 0 < i < (n_hidden-1)]: n_hidden_units x n_hidden_units
+        self.B[i: 0 < i < (n_hidden-1)]: n_hidden_units
 
-        self.W[-1]: d_hidden
+        self.W[-1]: n_hidden_units
         self.B[-1]: 1
         """
-        self.d_input = d_input
-        self.d_hidden = d_hidden
-        self.n_hidden = n_hidden
+        self.n_features = n_features
+        self.n_hidden_units = n_hidden_units
+        self.n_hidden_layers = n_hidden_layers
         self.epochs = epochs
         self.learning_rate = learning_rate
         self.batch_size = batch_size
@@ -57,24 +57,26 @@ class BinaryNeuralNetwork(object):
 
     def initialize_params(self):
         """Initialize weights and biases (Glorot initialization)"""
-        for i in range(self.n_hidden + 1):
+        for i in range(self.n_hidden_layers + 1):
             if i == 0:  # input -> h_1
-                limit = np.sqrt(6 / (self.d_input + self.d_hidden))
-                w = np.random.uniform(-limit, limit, (self.d_input, self.d_hidden))
-                b = np.random.uniform(-limit, limit, (self.d_hidden,))
-            elif i < self.n_hidden:  # h_i -> h_{i+1}
-                limit = np.sqrt(6 / (self.d_hidden + self.d_hidden))
-                w = np.random.uniform(-limit, limit, (self.d_hidden, self.d_hidden))
-                b = np.random.uniform(-limit, limit, (self.d_hidden,))
+                limit = np.sqrt(6 / (self.n_features + self.n_hidden_units))
+                w = np.random.uniform(
+                    -limit, limit, (self.n_features, self.n_hidden_units)
+                )
+                b = np.random.uniform(-limit, limit, (self.n_hidden_units,))
+            elif i < self.n_hidden_layers:  # h_i -> h_{i+1}
+                limit = np.sqrt(6 / (self.n_hidden_units + self.n_hidden_units))
+                w = np.random.uniform(
+                    -limit, limit, (self.n_hidden_units, self.n_hidden_units)
+                )
+                b = np.random.uniform(-limit, limit, (self.n_hidden_units,))
             else:  # h_{n} -> output
-                limit = np.sqrt(6 / (self.d_hidden + 1))
-                w = np.random.uniform(-limit, limit, (self.d_hidden, 1))
+                limit = np.sqrt(6 / (self.n_hidden_units + 1))
+                w = np.random.uniform(-limit, limit, (self.n_hidden_units, 1))
                 b = np.random.uniform(-limit, limit, (1,))
 
             self.W.append(w)
-            print(f"Shape of self.W[{i+1}]:", self.W[i].shape)
             self.B.append(b)
-            print(f"Shape of self.B[{i+1}]:", self.B[i].shape)
 
     def forward(self, X: npt.ArrayLike, return_intermediates=False) -> npt.ArrayLike:
         """
@@ -87,10 +89,10 @@ class BinaryNeuralNetwork(object):
 
         # forward propagation
         a_i = X
-        for i in range(self.n_hidden + 1):
+        for i in range(self.n_hidden_layers + 1):
             z_i = np.dot(a_i, self.W[i]) + self.B[i]  # add bias row-wise
 
-            if i < self.n_hidden:
+            if i < self.n_hidden_layers:
                 a_i = relu(z_i)
             else:  # output layer
                 z_i = z_i.squeeze()  # transform (n_samples, 1) to (n_samples,)
@@ -110,7 +112,7 @@ class BinaryNeuralNetwork(object):
         """
         Create a prediction matrix with `self.forward()`
 
-        pred: n_samples
+        pred: (n_samples,)
         """
         y_hat = self.forward(X)
         pred = np.where(y_hat >= 0.5, 1, 0)
@@ -121,7 +123,7 @@ class BinaryNeuralNetwork(object):
         """
         Create a prediction matrix with `self.forward()`
 
-        y_hat: n_samples
+        y_hat: (n_samples,)
         """
         y_hat = self.forward(X)
         return y_hat
@@ -150,7 +152,7 @@ class BinaryNeuralNetwork(object):
         d_L_d_B[-1] = np.sum(d_L_d_z, axis=0) / batch_size
 
         # back propagation using chain rule
-        for l in range(self.n_hidden - 1, -1, -1):
+        for l in range(self.n_hidden_layers - 1, -1, -1):
             d_L_d_z = np.dot(d_L_d_z, self.W[l + 1].T) * relu_prime(
                 Z[l]
             )  # d^l = (d^{l+1})^T * W^{l+1} x (dA^{l} / dz^{l})
@@ -193,7 +195,7 @@ class BinaryNeuralNetwork(object):
                 Y_hat, A, Z = self.forward(X_batch, return_intermediates=True)
                 d_L_d_W, d_L_d_B = self._backward(Y_batch, Y_hat, A, Z)
 
-                for j in range(self.n_hidden + 1):
+                for j in range(self.n_hidden_layers + 1):
                     self.W[j] -= self.learning_rate * d_L_d_W[j]
                     self.B[j] -= self.learning_rate * d_L_d_B[j]
 
@@ -212,7 +214,8 @@ class BinaryNeuralNetwork(object):
             losses_train.append(loss_train)
             losses_val.append(loss_val)
 
-            print(f"Epoch {epoch}: Train Loss: {loss_train}, Val Loss: {loss_val}")
+            if plot:
+                print(f"Epoch {epoch}: Train Loss: {loss_train}, Val Loss: {loss_val}")
 
         if plot:
             plt.plot(losses_train, label="Training Loss")
@@ -222,4 +225,4 @@ class BinaryNeuralNetwork(object):
             plt.title("Training and Validation Loss")
             plt.legend()
             plt.show()
-        print("Training complete.")
+            print("Training complete.")
