@@ -6,26 +6,26 @@ import numpy.typing as npt
 from sklearn.utils.class_weight import compute_class_weight
 
 from ..utils import weighted_binary_cross_entropy_loss
-from .utils import compute_class_weights, delta_weighted_bce, sigmoid
+from .utils import compute_class_weights, delta_weighted_bce, sigmoid, sigmoid_prime
 
 
 class BinaryLogisticRegression(object):
     def __init__(
         self,
-        d_input: int,
+        n_features: int,
         epochs: int = 10,
-        learning_rate: float = 0.005,
+        learning_rate: float = 0.05,
         batch_size: int = 32,
         lambda_reg: float = 0.01,
     ):
         """
-        X: n_input x d_input
-        Y: n_input
+        X: (n_samples, n_features)
+        Y: (n_samples,)
 
-        self.W: d_input x 1
-        self.B: 1
+        self.W: (n_features, 1)
+        self.B: (1,)
         """
-        self.d_input = d_input
+        self.n_features = n_features
         self.epochs = epochs
         self.learning_rate = learning_rate
         self.batch_size = batch_size
@@ -34,14 +34,14 @@ class BinaryLogisticRegression(object):
         self.class_weights = np.zeros(2)
 
         # initialize weights and bias to zeros
-        self.W = np.zeros(d_input)
+        self.W = np.zeros(n_features)
         self.B = 0.0
 
     def forward(self, X: npt.ArrayLike) -> npt.ArrayLike:
         """
         Compute forward pass of the logistic regression model.
 
-        Y_hat: n_samples
+        Y_hat: (n_samples,)
         """
         z = np.dot(X, self.W) + self.B
         Y_hat = sigmoid(z)
@@ -51,7 +51,7 @@ class BinaryLogisticRegression(object):
         """
         Create a prediction matrix with `self.forward()`
 
-        pred: n_samples
+        pred: (n_samples,)
         """
         y_hat = self.forward(X)
         pred = np.where(y_hat >= 0.5, 1, 0)
@@ -62,7 +62,7 @@ class BinaryLogisticRegression(object):
         """
         Predict probabilities for the input data.
 
-        Y_hat: n_samples
+        Y_hat: (n_samples,)
         """
         Y_hat = self.forward(X)
         return Y_hat
@@ -78,9 +78,8 @@ class BinaryLogisticRegression(object):
         """
         batch_size = X.shape[0]
 
-        delta_y = delta_weighted_bce(
-            Y_hat, Y, self.class_weights
-        )  # equivalent to Y_hat - Y in non-weighted binary cross-entropy
+        # equivalent to Y_hat - Y in non-weighted binary cross-entropy
+        delta_y = delta_weighted_bce(Y_hat, Y, self.class_weights)
 
         d_L_d_W = np.dot(X.T, delta_y) / batch_size
         d_L_d_B = np.sum(delta_y, axis=0) / batch_size
@@ -100,11 +99,6 @@ class BinaryLogisticRegression(object):
     ):
         """
         Fit the logistic regression model to the training data.
-
-        Parameters:
-        X (npt.ArrayLike): Input data.
-        Y (npt.ArrayLike): True labels.
-        epochs (int): Number of training epochs.
         """
         n = X.shape[0]
 

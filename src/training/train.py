@@ -8,7 +8,7 @@ from sklearn.model_selection import KFold
 from .models import BinaryLogisticRegression, weighted_binary_cross_entropy_loss
 
 
-def k_fold_cross_validation(initialized_model, X, y, k=5):
+def k_fold_cross_validation(initialized_model, X, y, k=5, fit_final_model=True):
     """
     Get pessimistic yet less variant empirical risk estimate using k-fold cross-validation.
     """
@@ -28,10 +28,13 @@ def k_fold_cross_validation(initialized_model, X, y, k=5):
 
     R_est = R_est / k
 
-    model_final = copy.deepcopy(initialized_model)
-    model_final.fit(X, y, X, y)
+    if fit_final_model:
+        model_final = copy.deepcopy(initialized_model)
+        model_final.fit(X, y, X, y)
 
-    return model_final, R_est
+        return model_final, R_est
+
+    return R_est
 
 
 def feature_selection(
@@ -106,35 +109,37 @@ def feature_selection(
     return features_to_delete, risk_estimates
 
 
-def grid_search_cross_validation(X, y, model, param_grid, cv):
-    best_score = -np.inf
-    best_params = None
-    best_model = None
-
+def select_model(X, y, Model, param_grid, k=5):
     # this creates a list of one dict per parameter combination
     param_combinations = [
         dict(zip(param_grid.keys(), values)) for values in product(*param_grid.values())
     ]
 
-    for params in param_combinations:
-        model.set_params(**params)
+    R_ests = np.zeros((k, len(param_combinations)))
 
-        cv_scores = []
-        for train_idx, val_idx in cv.split(X):
-            X_train, X_val = X[train_idx], X[val_idx]
-            y_train, y_val = y[train_idx], y[val_idx]
+    kf_outer = KFold(n_splits=k, shuffle=True)
 
-            model_clone = copy.deepcopy(model)
-            model_clone.fit(X_train, y_train)
-            score = model_clone.score(X_val, y_val)
-            cv_scores.append(score)
+    for i, (outer_train_idx, outer_test_idx) in enumerate(kf_outer.split(X)):
+        X_train_outer, X_val_outer = X[outer_train_idx], X[outer_test_idx]
+        y_train_outer, y_val_outer = y[outer_train_idx], y[outer_test_idx]
 
-        mean_cv_score = np.mean(cv_scores)
+        for j, params in enumerate(param_combinations):
+            model = Model(**params)
 
-        if mean_cv_score > best_score:
-            best_score = mean_cv_score
-            best_params = params
-            best_model = copy.deepcopy(model).set_params(**params)
-            best_model.fit(X, y)  # Refit on the entire dataset
+            R_ests[i, j] = k_fold_cross_validation(
+                model, X_train_outer, y_train_outer, k=k - 1, fit_final_model=False
+            )
 
-    return best_model, best_params, best_score
+    R_ests_params = np.mean(R_ests, axis=0)
+    params = param_combinations[np.argmin(R_ests_params)]
+
+    model_est = Model(**params)
+    model_est.fit(X_train_outer, y_train_outer, X_val_outer, y_val_outer)
+
+    y_hat_outer = model_est.forward(X_val_outer)
+    R_est = weighted_binary_cross_entropy_loss(y_hat_outer, y_val_outer)
+
+    model_final = Model(**params)
+    model_final.fit(X, y, X, y)
+
+    return model, params, R_est

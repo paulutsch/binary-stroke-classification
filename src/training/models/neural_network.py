@@ -99,9 +99,7 @@ class BinaryNeuralNetwork(object):
             Z.append(z_i)
             A.append(a_i)
 
-        print("Shape of A[-1]:", A[-1].shape)
         Y_hat = A[-1].squeeze()
-        print("Shape of Y_hat:", Y_hat.shape)
 
         if return_intermediates:
             return Y_hat, A, Z
@@ -154,7 +152,6 @@ class BinaryNeuralNetwork(object):
         d_L_d_B[-1] = np.sum(delta_y, axis=0) / batch_size
 
         delta_l = delta_y
-        print("Shape of delta_l:", delta_l.shape)
 
         # back propagation using chain rule
         for l in range(self.n_hidden - 1, -1, -1):

@@ -59,3 +59,28 @@ def delta_weighted_bce(Y_hat, Y, class_weights=None, epsilon=0.001) -> npt.Array
         class_weights[0] * (1 - Y) / (1 - Y_hat)
     )
     return dL_dy_hat
+
+
+# def delta_weighted_bce(Y_hat, Y, class_weights=None, epsilon=0.001) -> npt.ArrayLike:
+#     """
+#     Compute the derivative of the weighted binary cross entropy loss.
+
+#     Parameters:
+#     Y_hat (npt.ArrayLike): Predicted probabilities.
+#     Y (npt.ArrayLike): True labels.
+#     class_weights (npt.ArrayLike): Weights for the classes.
+#     epsilon (float, optional): Small value to avoid division by zero. Defaults to 1e-15.
+
+#     Returns:
+#     npt.ArrayLike: Derivative of the loss with respect to pre-activation z of the output layer.
+#     """
+#     if class_weights is None:
+#         class_weights = compute_class_weights(Y)
+
+#     # avoiding division by zero
+#     Y_hat = np.clip(Y_hat, epsilon, 1 - epsilon)
+
+#     dL_dy_hat = -(class_weights[1] * Y / Y_hat) + (
+#         class_weights[0] * (1 - Y) / (1 - Y_hat)
+#     )
+#     return dL_dy_hat

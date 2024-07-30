@@ -5,7 +5,6 @@ from .models import (
     LogisticRegression,
     NaiveBaseline,
     NeuralNetwork,
-    RandomForest,
 )
-from .train import feature_selection, k_fold_cross_validation
+from .train import feature_selection, k_fold_cross_validation, select_model
 from .utils import weighted_binary_cross_entropy_loss
