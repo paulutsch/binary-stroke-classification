@@ -13,9 +13,9 @@ class BinaryLogisticRegression(object):
     def __init__(
         self,
         n_features: int,
-        epochs: int = 10,
-        learning_rate: float = 0.05,
-        batch_size: int = 32,
+        epochs: int = 20,
+        learning_rate: float = 0.1,
+        batch_size: int = 8,
         lambda_reg: float = 0.01,
     ):
         """
@@ -78,11 +78,11 @@ class BinaryLogisticRegression(object):
         """
         batch_size = X.shape[0]
 
-        # equivalent to Y_hat - Y in non-weighted binary cross-entropy
-        delta_y = delta_weighted_bce(Y_hat, Y, self.class_weights)
+        # equivalent to D_L_d_z = Y_hat - Y in non-weighted binary cross-entropy
+        delta_z = delta_weighted_bce(Y_hat, Y, self.class_weights)
 
-        d_L_d_W = np.dot(X.T, delta_y) / batch_size
-        d_L_d_B = np.sum(delta_y, axis=0) / batch_size
+        d_L_d_W = np.dot(X.T, delta_z) / batch_size
+        d_L_d_B = np.sum(delta_z, axis=0) / batch_size
 
         # add L2 regularization derivative
         d_L_d_W += self.lambda_reg * self.W

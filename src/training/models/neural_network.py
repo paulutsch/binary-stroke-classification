@@ -142,27 +142,27 @@ class BinaryNeuralNetwork(object):
         d_L_d_B = [np.zeros_like(b) for b in self.B]
 
         # derivative of the loss with respect to the pre-activation of the output layer
-        delta_y = delta_weighted_bce(Y_hat, Y, self.class_weights) * sigmoid_prime(
-            Z[-1]
-        )  # multiply with the derivative of the activation function here, because dL/dy * dy/dz = dL/dz
-        delta_y = delta_y.reshape(-1, 1)  # reshape from (n_samples,) to (n_samples, 1)
+        delta_z = delta_weighted_bce(Y_hat, Y, self.class_weights) 
+        # * sigmoid_prime(
+        #     Z[-1]
+        # )  
+        # multiply with the derivative of the activation function here, because dL/dy * dy/dz = dL/dz
+        delta_z = delta_z.reshape(-1, 1)  # reshape from (n_samples,) to (n_samples, 1)
 
         # derivatives of the loss with respect to the weights and biases of the last layer
-        d_L_d_W[-1] = np.dot(A[-2].T, delta_y) / batch_size
-        d_L_d_B[-1] = np.sum(delta_y, axis=0) / batch_size
-
-        delta_l = delta_y
+        d_L_d_W[-1] = np.dot(A[-2].T, delta_z) / batch_size
+        d_L_d_B[-1] = np.sum(delta_z, axis=0) / batch_size
 
         # back propagation using chain rule
         for l in range(self.n_hidden - 1, -1, -1):
-            delta_l = np.dot(delta_l, self.W[l + 1].T) * relu_prime(
+            delta_z = np.dot(delta_z, self.W[l + 1].T) * relu_prime(
                 Z[l]
             )  # d^l = (d^{l+1})^T * W^{l+1} x (dA^{l} / dz^{l})
 
             d_L_d_W[l] = (
-                np.dot(A[l].T, delta_l) / batch_size
+                np.dot(A[l].T, delta_z) / batch_size
             )  # note: A[l] is actually correct here – A[0] is X!
-            d_L_d_B[l] = np.sum(delta_l, axis=0) / batch_size
+            d_L_d_B[l] = np.sum(delta_z, axis=0) / batch_size
 
             # add L2 regularization derivative
             d_L_d_W[l] += self.lambda_reg * self.W[l]

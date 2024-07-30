@@ -36,31 +36,6 @@ def relu_prime(z: npt.ArrayLike) -> npt.ArrayLike:
     return np.where(z > 0, 1, 0)  # return z_i for z_i > 0, else 0
 
 
-def delta_weighted_bce(Y_hat, Y, class_weights=None, epsilon=0.001) -> npt.ArrayLike:
-    """
-    Compute the derivative of the weighted binary cross entropy loss.
-
-    Parameters:
-    Y_hat (npt.ArrayLike): Predicted probabilities.
-    Y (npt.ArrayLike): True labels.
-    class_weights (npt.ArrayLike): Weights for the classes.
-    epsilon (float, optional): Small value to avoid division by zero. Defaults to 1e-15.
-
-    Returns:
-    npt.ArrayLike: Derivative of the loss with respect to Y_hat.
-    """
-    if class_weights is None:
-        class_weights = compute_class_weights(Y)
-
-    # avoiding division by zero
-    Y_hat = np.clip(Y_hat, epsilon, 1 - epsilon)
-
-    dL_dy_hat = -(class_weights[1] * Y / Y_hat) + (
-        class_weights[0] * (1 - Y) / (1 - Y_hat)
-    )
-    return dL_dy_hat
-
-
 # def delta_weighted_bce(Y_hat, Y, class_weights=None, epsilon=0.001) -> npt.ArrayLike:
 #     """
 #     Compute the derivative of the weighted binary cross entropy loss.
@@ -72,7 +47,7 @@ def delta_weighted_bce(Y_hat, Y, class_weights=None, epsilon=0.001) -> npt.Array
 #     epsilon (float, optional): Small value to avoid division by zero. Defaults to 1e-15.
 
 #     Returns:
-#     npt.ArrayLike: Derivative of the loss with respect to pre-activation z of the output layer.
+#     npt.ArrayLike: Derivative of the loss with respect to Y_hat.
 #     """
 #     if class_weights is None:
 #         class_weights = compute_class_weights(Y)
@@ -84,3 +59,23 @@ def delta_weighted_bce(Y_hat, Y, class_weights=None, epsilon=0.001) -> npt.Array
 #         class_weights[0] * (1 - Y) / (1 - Y_hat)
 #     )
 #     return dL_dy_hat
+
+
+def delta_weighted_bce(Y_hat, Y, class_weights=None, epsilon=0.001) -> npt.ArrayLike:
+    """
+    Compute the derivative of the weighted binary cross entropy loss with respect to the pre-activation of the output layer.
+
+    Returns:
+    npt.ArrayLike: Derivative of the loss with respect to Y_hat.
+    Equivalent to dL/dz = dL/dy_hat * dy_hat/dz
+    """
+    if class_weights is None:
+        class_weights = compute_class_weights(Y)
+
+    # avoiding division by zero
+    # Y_hat = np.clip(Y_hat, epsilon, 1 - epsilon)
+
+    weight_per_sample = np.where(Y == 1, class_weights[1], class_weights[0])
+    d_L_d_z = weight_per_sample * (Y_hat - Y)
+
+    return d_L_d_z
