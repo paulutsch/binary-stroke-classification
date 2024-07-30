@@ -78,11 +78,12 @@ class BinaryLogisticRegression(object):
         """
         batch_size = X.shape[0]
 
-        # equivalent to D_L_d_z = Y_hat - Y in non-weighted binary cross-entropy
-        delta_z = delta_weighted_bce(Y_hat, Y, self.class_weights)
+        # derivative of the loss with respect to the pre-activation of the output layer
+        # equivalent to d_L_d_z = Y_hat - Y in non-weighted binary cross-entropy
+        d_L_d_z = delta_weighted_bce(Y_hat, Y, self.class_weights)
 
-        d_L_d_W = np.dot(X.T, delta_z) / batch_size
-        d_L_d_B = np.sum(delta_z, axis=0) / batch_size
+        d_L_d_W = np.dot(X.T, d_L_d_z) / batch_size
+        d_L_d_B = np.sum(d_L_d_z, axis=0) / batch_size
 
         # add L2 regularization derivative
         d_L_d_W += self.lambda_reg * self.W

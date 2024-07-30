@@ -63,17 +63,10 @@ def relu_prime(z: npt.ArrayLike) -> npt.ArrayLike:
 
 def delta_weighted_bce(Y_hat, Y, class_weights=None, epsilon=0.001) -> npt.ArrayLike:
     """
-    Compute the derivative of the weighted binary cross entropy loss with respect to the pre-activation of the output layer.
-
-    Returns:
-    npt.ArrayLike: Derivative of the loss with respect to Y_hat.
-    Equivalent to dL/dz = dL/dy_hat * dy_hat/dz
+    Returns dL/dz = dL/dy_hat * dy_hat/dz = dL/dy_hat * sigmoid_prime(z) = weighted([Y / Y_hat] - [(1-Y) / (1-Y_hat)]) * sigmoid(z) * (1 - sigmoid(z))
     """
     if class_weights is None:
         class_weights = compute_class_weights(Y)
-
-    # avoiding division by zero
-    # Y_hat = np.clip(Y_hat, epsilon, 1 - epsilon)
 
     weight_per_sample = np.where(Y == 1, class_weights[1], class_weights[0])
     d_L_d_z = weight_per_sample * (Y_hat - Y)
