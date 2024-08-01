@@ -3,7 +3,8 @@ from itertools import product
 
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.model_selection import KFold
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import KFold, cross_val_score
 
 from .evaluate import evaluate
 from .models import BinaryLogisticRegression, weighted_binary_cross_entropy_loss
@@ -52,34 +53,30 @@ def feature_selection(
     risk_estimates = [np.inf]
     lowest_risk_estimate = np.inf
 
-    lr = 0.01
-    n_epochs = 12
-    batch_size = 8
-    lambda_reg = 0.001
-
     X_tmp = X.copy()
     y_tmp = y.copy()
 
+    original_indices = np.arange(n_features)
+
     for i in range(0, n_features - 1, n_features_per_iteration):
-        model = BinaryLogisticRegression(
-            X_tmp.shape[1],
-            epochs=n_epochs,
-            learning_rate=lr,
-            batch_size=batch_size,
-            lambda_reg=lambda_reg,
+        model = LogisticRegression(penalty="l1", solver="liblinear", max_iter=1000)
+        log_reg_tmp = model.fit(X_tmp, y_tmp)
+        risk_estimate = -np.mean(
+            cross_val_score(log_reg_tmp, X_tmp, y_tmp, cv=10, scoring="neg_log_loss")
         )
-        log_reg_tmp, risk_estimate = k_fold_cross_validation(model, X_tmp, y_tmp, k=10)
-        log_message = f"i = {i} – Empirical Risk Estimate: {risk_estimate}, Previous Estimate: {risk_estimates[-1]}"
+        log_message = f"i = {i} / {n_features-1} – Empirical Risk Estimate: {risk_estimate}, Previous Estimate: {risk_estimates[-1]}"
 
-        features_to_delete = np.argsort(np.abs(log_reg_tmp.W))[0:5]
+        features_to_delete = np.argsort(np.abs(log_reg_tmp.coef_))[0][
+            :n_features_per_iteration
+        ]
+        deleted_features.extend(original_indices[features_to_delete].tolist())
+
         X_tmp = np.delete(X_tmp, features_to_delete, axis=1)
+        original_indices = np.delete(original_indices, features_to_delete)
 
-        deleted_features.extend(features_to_delete)
         risk_estimates.append(risk_estimate)
 
-        if risk_estimate < (
-            lowest_risk_estimate + risk_estimate_error_margin
-        ):  # when in doubt, delete more features
+        if risk_estimate < (lowest_risk_estimate + risk_estimate_error_margin):
             optimal_number_of_features_to_delete = i
             log_message += " – new number of features to delete"
             if risk_estimate < lowest_risk_estimate:
@@ -88,11 +85,12 @@ def feature_selection(
 
         print(log_message)
 
-    features_to_delete = deleted_features[0:optimal_number_of_features_to_delete]
+    features_to_delete = deleted_features[:optimal_number_of_features_to_delete]
 
-    # plot the risk estimates
     if plot:
-        print(f"Number of features to delete: {optimal_number_of_features_to_delete}")
+        print(
+            f"Number of features to delete: {optimal_number_of_features_to_delete} / {n_features}"
+        )
 
         plt.plot(
             range(
@@ -136,8 +134,16 @@ def select_model(X, y, Model, param_grid, k=5):
             )
 
     R_ests_params = np.mean(R_ests, axis=0)
+    print(f"number of combinations: {len(R_ests_params)}, should be {n_combinations}")
 
     params = param_combinations[np.argmin(R_ests_params)]
+    print(f"argmin(R_ests_params): {np.argmin(R_ests_params)}")
+    print(
+        f"Risk estimate for argmin(R_ests_params): {R_ests_params[np.argmin(R_ests_params)]}"
+    )
+    print(
+        f"All risk estimates for argmin(R_ests_params): {R_ests[:, np.argmin(R_ests_params)]}"
+    )
     print(f"Selected best parameters: {params}")
 
     model_est = Model(**params)

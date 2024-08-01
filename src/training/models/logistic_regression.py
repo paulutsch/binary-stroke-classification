@@ -18,7 +18,8 @@ class BinaryLogisticRegression(object):
         epochs: int = 20,
         learning_rate: float = 0.1,
         batch_size: int = 8,
-        lambda_reg: float = 0.001,
+        lambda_reg: float = 0.1,
+        regularization: str = "L2",
     ):
         """
         X: (n_samples, n_features)
@@ -32,6 +33,7 @@ class BinaryLogisticRegression(object):
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.lambda_reg = lambda_reg
+        self.regularization = regularization
 
         self.class_weights = np.zeros(2)
 
@@ -87,8 +89,12 @@ class BinaryLogisticRegression(object):
         d_L_d_W = np.dot(X.T, d_L_d_z) / batch_size
         d_L_d_B = np.sum(d_L_d_z, axis=0) / batch_size
 
-        # add L2 regularization derivative
-        d_L_d_W += self.lambda_reg * self.W
+        if self.regularization == "L1":
+            # add L1 regularization derivative
+            d_L_d_W += self.lambda_reg * np.sign(self.W)
+        else:
+            # add L2 regularization derivative
+            d_L_d_W += self.lambda_reg * self.W
 
         return d_L_d_W, d_L_d_B
 

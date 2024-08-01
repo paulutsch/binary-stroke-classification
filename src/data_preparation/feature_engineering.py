@@ -24,9 +24,7 @@ def create_polynomials(
 
 
 # transform the test set using the stored feature names
-def transform_polynomials(
-    df: pd.DataFrame, columns: List[str], feature_names: List[str]
-) -> pd.DataFrame:
+def transform_polynomials(df: pd.DataFrame, feature_names: List[str]) -> pd.DataFrame:
     new_columns = {}
 
     for new_col_name in feature_names:
@@ -38,12 +36,29 @@ def transform_polynomials(
     return new_df
 
 
-def pca(df: pd.DataFrame, n_components: int = 2) -> pd.DataFrame:
+def create_pca(
+    df: pd.DataFrame, columns: List[str], n_components: int = 2
+) -> Tuple[PCA, pd.DataFrame]:
     pca = PCA(n_components=n_components)
-    principal_components = pca.fit_transform(df)
-    principal_df = pd.DataFrame(
-        data=principal_components,
+
+    feature_data = df[columns]
+
+    pcs = pca.fit_transform(feature_data)
+    new_df = pd.DataFrame(
+        data=pcs,
         columns=[f"PC{i}" for i in range(1, n_components + 1)],
     )
 
-    return principal_df
+    return new_df, pca
+
+
+def transform_pca(df: pd.DataFrame, pca: PCA, columns: List[str]) -> pd.DataFrame:
+    feature_data = df[columns]
+
+    pcs = pca.transform(feature_data)
+    new_df = pd.DataFrame(
+        data=pcs,
+        columns=[f"PC{i}" for i in range(1, len(pcs[0]) + 1)],
+    )
+
+    return new_df

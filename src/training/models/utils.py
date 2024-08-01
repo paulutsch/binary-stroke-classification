@@ -11,8 +11,13 @@ def sigmoid(z: npt.ArrayLike) -> npt.ArrayLike:
     """
     Sigmoid function with input clipping to avoid overflow.
     """
-    z = np.clip(z, -500, 500)  # avoiding overflow
-    return 1 / (1 + np.exp(-z))
+
+    z = np.asarray(z)
+    result = np.zeros_like(z)
+    negative_mask = z < 0
+    result[negative_mask] = np.exp(z[negative_mask]) / (1 + np.exp(z[negative_mask]))
+    result[~negative_mask] = 1 / (1 + np.exp(-z[~negative_mask]))
+    return result
 
 
 def sigmoid_prime(z: npt.ArrayLike) -> npt.ArrayLike:
