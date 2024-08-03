@@ -1,7 +1,5 @@
-import numpy as np
 import pandas as pd
 from loguru import logger
-from sklearn.linear_model import LinearRegression
 
 
 def replace_na(df: pd.DataFrame, replace_with: str = "mean"):
@@ -15,23 +13,6 @@ def replace_na(df: pd.DataFrame, replace_with: str = "mean"):
             elif replace_with == "median":
                 replacement = df[column].median()
                 new_df[column] = new_df[column].fillna(replacement)
-            elif replace_with == "regression":
-                # predict missing values based on the other values
-                not_null_df = new_df[new_df.dropna()]
-                null_df = new_df[new_df[column].isnull()]
-
-                if not not_null_df.shape[0] > 1:
-                    # not enough samples
-                    continue
-
-                X = not_null_df.drop(columns=[column])
-                y = not_null_df[column]
-
-                model = LinearRegression()
-                model.fit(X, y)
-
-                predicted_values = model.predict(null_df.drop(columns=[column]))
-                new_df.loc[new_df[column].isnull(), column] = predicted_values
 
     logger.info(f"Replaced NaN values with {replace_with}")
 

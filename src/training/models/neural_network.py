@@ -6,14 +6,7 @@ import numpy.typing as npt
 from sklearn.utils.class_weight import compute_class_weight
 
 from ..utils import weighted_binary_cross_entropy_loss
-from .utils import (
-    compute_class_weights,
-    delta_weighted_bce,
-    relu,
-    relu_prime,
-    sigmoid,
-    sigmoid_prime,
-)
+from .utils import delta_weighted_bce, relu, relu_prime, sigmoid
 
 
 class BinaryNeuralNetwork(object):

@@ -6,4 +6,3 @@ from .feature_engineering import (
     transform_pca,
     transform_polynomials,
 )
-from .stroke_dataset import StrokeDataset

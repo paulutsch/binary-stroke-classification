@@ -143,28 +143,3 @@ def print_non_numericals(df: pd.DataFrame):
         if not pd.api.types.is_numeric_dtype(df[column]):
             unique_values = df[column].unique()
             logger.info(f"unique values in {column}: {unique_values}")
-
-
-def plot_scatter_and_pair(X: list, Y: list, feature_names: list, target_name: str):
-    X_df = pd.DataFrame(X, columns=feature_names)
-    Y_series = pd.Series(Y, name=target_name)
-
-    numeric_columns = X_df.select_dtypes(include=["float64", "int64"]).columns
-
-    fig, axes = plt.subplots(nrows=5, ncols=5, figsize=(18, 12))
-    axes = axes.flatten()
-    for i, col in enumerate(numeric_columns):
-        sns.scatterplot(x=X_df[col], y=Y_series, ax=axes[i])
-        axes[i].set_title(f"{col} vs '{target_name}'")
-        axes[i].set_xlabel(col)
-        axes[i].set_ylabel(target_name)
-
-    plt.tight_layout()
-    plt.show()
-
-    if len(numeric_columns) > 1:
-        combined_df = X_df.copy()
-        combined_df[target_name] = Y_series
-        sns.pairplot(combined_df, hue=target_name, vars=numeric_columns)
-        plt.suptitle("Pair Plot", y=1.02)
-        plt.show()

@@ -1,12 +1,9 @@
-from abc import ABC, abstractmethod
 from typing import Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from loguru import logger
-from numpy import ndarray
-from numpy.typing import ArrayLike
 from sklearn.metrics import (
     accuracy_score,
     confusion_matrix,
@@ -16,11 +13,8 @@ from sklearn.metrics import (
     roc_auc_score,
     roc_curve,
 )
-from sklearn.model_selection import KFold
 
-from src.data_preparation import StrokeDataset
-
-from .models import weighted_binary_cross_entropy_loss
+from .utils import weighted_binary_cross_entropy_loss
 
 
 def evaluate(

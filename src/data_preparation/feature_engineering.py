@@ -2,7 +2,6 @@ from itertools import combinations_with_replacement
 from typing import List, Tuple
 
 import pandas as pd
-from loguru import logger
 from sklearn.decomposition import PCA
 
 

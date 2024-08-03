@@ -4,10 +4,10 @@ from itertools import product
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import KFold, cross_val_score
+from sklearn.model_selection import KFold
 
 from .evaluate import evaluate
-from .models import BinaryLogisticRegression, weighted_binary_cross_entropy_loss
+from .utils import weighted_binary_cross_entropy_loss
 
 
 def k_fold_cross_validation(initialized_model, X, y, k=5, fit_final_model=True):
@@ -59,11 +59,16 @@ def feature_selection(
     original_indices = np.arange(n_features)
 
     for i in range(0, n_features - 1, n_features_per_iteration):
-        model = LogisticRegression(penalty="l1", solver="liblinear", max_iter=1000)
-        log_reg_tmp = model.fit(X_tmp, y_tmp)
-        risk_estimate = -np.mean(
-            cross_val_score(log_reg_tmp, X_tmp, y_tmp, cv=10, scoring="neg_log_loss")
+        model = LogisticRegression(
+            penalty="l1",
+            solver="liblinear",
+            max_iter=1000,
+            C=2,
+            class_weight="balanced",
         )
+        log_reg_tmp = model.fit(X_tmp, y_tmp)
+        y_pred = log_reg_tmp.predict_proba(X_tmp)[:, 1]
+        risk_estimate = weighted_binary_cross_entropy_loss(y_pred, y_tmp)
         log_message = f"i = {i} / {n_features-1} – Empirical Risk Estimate: {risk_estimate}, Previous Estimate: {risk_estimates[-1]}"
 
         features_to_delete = np.argsort(np.abs(log_reg_tmp.coef_))[0][
@@ -108,8 +113,11 @@ def feature_selection(
     return features_to_delete, risk_estimates
 
 
-def select_model(X, y, Model, param_grid, k=5):
-    # this creates a list of one dict per parameter combination
+def nested_cross_validation(X, y, Model, param_grid, k=5):
+    print(
+        f"Performing nested cross-validation for model {Model.name} with {X.shape[0]} samples"
+    )
+    # list of one dict per parameter combination
     param_combinations = [
         dict(zip(param_grid.keys(), values)) for values in product(*param_grid.values())
     ]
@@ -127,22 +135,17 @@ def select_model(X, y, Model, param_grid, k=5):
             model = Model(**params)
 
             R_ests[i, j] = k_fold_cross_validation(
-                model, X_train_outer, y_train_outer, k=k - 1, fit_final_model=False
+                model, X_train_outer, y_train_outer, k=k, fit_final_model=False
             )
             print(
                 f"Empirical risk estimate for fold {i+1} / {k}, parameter set {j+1} / {n_combinations}: {R_ests[i, j]}"
             )
 
     R_ests_params = np.mean(R_ests, axis=0)
-    print(f"number of combinations: {len(R_ests_params)}, should be {n_combinations}")
 
     params = param_combinations[np.argmin(R_ests_params)]
-    print(f"argmin(R_ests_params): {np.argmin(R_ests_params)}")
     print(
         f"Risk estimate for argmin(R_ests_params): {R_ests_params[np.argmin(R_ests_params)]}"
-    )
-    print(
-        f"All risk estimates for argmin(R_ests_params): {R_ests[:, np.argmin(R_ests_params)]}"
     )
     print(f"Selected best parameters: {params}")
 
