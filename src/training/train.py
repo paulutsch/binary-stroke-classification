@@ -4,7 +4,7 @@ from itertools import product
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, train_test_split
 
 from .evaluate import evaluate
 from .utils import weighted_binary_cross_entropy_loss
@@ -42,8 +42,7 @@ def k_fold_cross_validation(initialized_model, X, y, k=5, fit_final_model=True):
 def feature_selection(
     X,
     y,
-    n_features_per_iteration: int = 5,
-    risk_estimate_error_margin: float = 0.01,
+    n_features_per_iteration: int = 1,
     plot: bool = False,
 ):
     n_features = X.shape[1]
@@ -58,17 +57,19 @@ def feature_selection(
 
     original_indices = np.arange(n_features)
 
-    for i in range(0, n_features - 1, n_features_per_iteration):
+    for i in range(0, n_features - 1):
+        X_train, X_val, y_train, y_val = train_test_split(
+            X_tmp, y_tmp, test_size=0.2, random_state=42
+        )
         model = LogisticRegression(
             penalty="l1",
             solver="liblinear",
             max_iter=1000,
-            C=2,
             class_weight="balanced",
         )
-        log_reg_tmp = model.fit(X_tmp, y_tmp)
-        y_pred = log_reg_tmp.predict_proba(X_tmp)[:, 1]
-        risk_estimate = weighted_binary_cross_entropy_loss(y_pred, y_tmp)
+        log_reg_tmp = model.fit(X_train, y_train)
+        y_pred = log_reg_tmp.predict_proba(X_val)[:, 1]
+        risk_estimate = weighted_binary_cross_entropy_loss(y_pred, y_val)
         log_message = f"i = {i} / {n_features-1} – Empirical Risk Estimate: {risk_estimate}, Previous Estimate: {risk_estimates[-1]}"
 
         features_to_delete = np.argsort(np.abs(log_reg_tmp.coef_))[0][
@@ -81,12 +82,10 @@ def feature_selection(
 
         risk_estimates.append(risk_estimate)
 
-        if risk_estimate < (lowest_risk_estimate + risk_estimate_error_margin):
+        if risk_estimate < lowest_risk_estimate:
+            lowest_risk_estimate = risk_estimate
             optimal_number_of_features_to_delete = i
-            log_message += " – new number of features to delete"
-            if risk_estimate < lowest_risk_estimate:
-                lowest_risk_estimate = risk_estimate
-                log_message += " – new lowest risk estimate"
+            log_message += " – new lowest risk estimate"
 
         print(log_message)
 

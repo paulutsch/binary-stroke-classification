@@ -51,24 +51,22 @@ class BinaryNeuralNetwork(object):
         self.initialize_params()
 
     def initialize_params(self):
-        """Initialize weights and biases (Glorot initialization)"""
+        """Initialize weights and biases (He initialization)"""
         for i in range(self.n_hidden_layers + 1):
             if i == 0:  # input -> h_1
-                limit = np.sqrt(6 / (self.n_features + self.n_hidden_units))
-                w = np.random.uniform(
-                    -limit, limit, (self.n_features, self.n_hidden_units)
-                )
-                b = np.random.uniform(-limit, limit, (self.n_hidden_units,))
+                limit = np.sqrt(2 / (self.n_features))
+                w = np.random.normal(0, limit, (self.n_features, self.n_hidden_units))
+                b = np.zeros((self.n_hidden_units,))
             elif i < self.n_hidden_layers:  # h_i -> h_{i+1}
-                limit = np.sqrt(6 / (self.n_hidden_units + self.n_hidden_units))
-                w = np.random.uniform(
-                    -limit, limit, (self.n_hidden_units, self.n_hidden_units)
+                limit = np.sqrt(2 / (self.n_hidden_units))
+                w = np.random.normal(
+                    0, limit, (self.n_hidden_units, self.n_hidden_units)
                 )
-                b = np.random.uniform(-limit, limit, (self.n_hidden_units,))
+                b = np.zeros((self.n_hidden_units,))
             else:  # h_{n} -> output
-                limit = np.sqrt(6 / (self.n_hidden_units + 1))
-                w = np.random.uniform(-limit, limit, (self.n_hidden_units, 1))
-                b = np.random.uniform(-limit, limit, (1,))
+                limit = np.sqrt(2 / (self.n_hidden_units))
+                w = np.random.normal(0, limit, (self.n_hidden_units, 1))
+                b = np.zeros((1,))
 
             self.W.append(w)
             self.B.append(b)
