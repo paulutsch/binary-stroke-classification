@@ -16,6 +16,13 @@ def k_fold_cross_validation(initialized_model, X, y, k=5, fit_final_model=True):
     """
     kf = KFold(n_splits=k, shuffle=True)
     R_est = 0
+    acc = 0
+    f1 = 0
+    auc = 0
+    prec = 0
+    rec = 0
+    fpr = None
+    tpr = None
 
     for train_index, test_index in kf.split(X):
         model_tmp = copy.deepcopy(initialized_model)
@@ -25,16 +32,40 @@ def k_fold_cross_validation(initialized_model, X, y, k=5, fit_final_model=True):
 
         model_tmp.fit(X_train, y_train, X_test, y_test)
 
-        y_hat = model_tmp.forward(X_test)
-        R_est += weighted_binary_cross_entropy_loss(y_hat, y_test)
+        y_hat_proba = model_tmp.forward(X_test)
+        y_hat = y_hat_proba >= 0.5
+        (
+            R_est_tmp,
+            acc_tmp,
+            f1_tmp,
+            auc_tmp,
+            prec_tmp,
+            rec_tmp,
+            cm_df,
+            fpr_tmp,
+            tpr_tmp,
+        ) = evaluate(model_tmp.name, y_test, y_hat, y_hat_proba, plot=False)
+        R_est += R_est_tmp
+        acc += acc_tmp
+        f1 += f1_tmp
+        auc += auc_tmp
+        prec += prec_tmp
+        rec += rec_tmp
+        fpr = fpr_tmp
+        tpr = tpr_tmp
 
     R_est = R_est / k
+    acc = acc / k
+    f1 = f1 / k
+    auc = auc / k
+    prec = prec / k
+    rec = rec / k
 
     if fit_final_model:
         model_final = copy.deepcopy(initialized_model)
         model_final.fit(X, y, X, y)
 
-        return model_final, R_est
+        return model_final, R_est, acc, f1, auc, prec, rec, cm_df, fpr, tpr
 
     return R_est
 
@@ -137,7 +168,8 @@ def nested_cross_validation(X, y, Model, param_grid, k=5):
                 model, X_train_outer, y_train_outer, k=k, fit_final_model=False
             )
             print(
-                f"Empirical risk estimate for fold {i+1} / {k}, parameter set {j+1} / {n_combinations}: {R_ests[i, j]}"
+                f"Empirical risk estimate for fold {i+1} / {k}, parameter set {j+1} / {n_combinations}: {R_ests[i, j]}",
+                end="\r",
             )
 
     R_ests_params = np.mean(R_ests, axis=0)
@@ -148,18 +180,24 @@ def nested_cross_validation(X, y, Model, param_grid, k=5):
     )
     print(f"Selected best parameters: {params}")
 
-    model_est = Model(**params)
-    model_est.fit(X_train_outer, y_train_outer, X_val_outer, y_val_outer)
-
-    y_hat_outer_proba = model_est.forward(X_val_outer)
-    y_hat_outer = model_est.predict(X_val_outer)
-    R_est, acc, f1, auc = evaluate(
-        Model.name, y_val_outer, y_hat_outer, y_hat_outer_proba, plot=True
-    )
-    print(f"Empirical risk estimate on outer validation set: {R_est}")
-
     model_final = Model(**params)
-    model_final.fit(X, y, X, y, plot=True)
-    print("Fitted final model on entire dataset")
+    model_final_trained, R_est, acc, f1, auc, prec, rec, cm_df, fpr, tpr = (
+        k_fold_cross_validation(model_final, X, y, k=k, fit_final_model=True)
+    )
+    print(
+        f"{Model.name} – Empirical Risk Estimate: {R_est}, Accuracy: {acc}, F1 score: {f1}, Precision: {prec}, Recall: {rec}, AUC: {auc}\n{cm_df}"
+    )
 
-    return model_final, params, R_est, acc, f1, auc
+    # Plot ROC curve
+    plt.figure()
+    plt.plot(fpr, tpr, color="darkorange", lw=2, label=f"ROC curve (area = {auc:0.2f})")
+    plt.plot([0, 1], [0, 1], color="navy", lw=2, linestyle="--")
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title(f"Receiver Operating Characteristic - {Model.name}")
+    plt.legend(loc="lower right")
+    plt.show()
+
+    return model_final_trained, params, R_est, acc, f1, auc

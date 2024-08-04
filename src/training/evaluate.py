@@ -23,7 +23,7 @@ def evaluate(
     y_pred: np.ndarray,
     y_pred_proba: np.ndarray,
     plot=False,
-) -> Tuple[float, float, float]:
+) -> Tuple[float, float, float, float, float, float, pd.DataFrame]:
     R_est = weighted_binary_cross_entropy_loss(y_pred_proba, y_true)
     acc = accuracy_score(y_true, y_pred)
     prec = precision_score(y_true, y_pred)
@@ -35,6 +35,7 @@ def evaluate(
         index=["Actual Neg", "Actual Pos"],
         columns=["Pred Neg", "Pred Pos"],
     )
+    fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
 
     if plot:
         logger.info(
@@ -42,7 +43,6 @@ def evaluate(
         )
 
         # Plot ROC curve
-        fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
         plt.figure()
         plt.plot(
             fpr, tpr, color="darkorange", lw=2, label=f"ROC curve (area = {auc:0.2f})"
@@ -56,4 +56,4 @@ def evaluate(
         plt.legend(loc="lower right")
         plt.show()
 
-    return R_est, acc, f1, auc
+    return R_est, acc, f1, auc, prec, rec, cm_df, fpr, tpr
