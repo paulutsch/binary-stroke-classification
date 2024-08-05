@@ -6,12 +6,11 @@ venv/
 dist/
 build/
 
-# PyTorch
-*.pth
-*.pt
-
 # macOS
 .DS_Store
 
 # Data
-/data
+/data/predictions.csv
+
+# venv
+.venv/
